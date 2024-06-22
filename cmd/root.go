@@ -43,24 +43,28 @@ var rootCmd = &cobra.Command{
 			}
 			imgDict[name] = img
 		}
-		composeServices := listFromComposeFile()
+		services := listFromComposeFile()
+		for _, service := range services {
+			fmt.Printf("%v\n", service.Image)
+		}
 		opts := make([]ServiceOption, 0)
-		for _, service := range composeServices.Services {
+		for _, service := range services {
 			if !strings.HasPrefix(service.Image, "634375685434.dkr.ecr.us-east-1.amazonaws.com") {
 				continue
 			}
-			name := strings.Split(service.Image, ":")[0]
-			shortName := strings.Split(name, "/")[1]
+			// name := strings.Split(service.Image, ":")[0]
+			// shortName := strings.Split(name, "/")[1]
+			name := service.Name
 			if img, ok := imgDict[name]; ok {
 				opts = append(opts, ServiceOption{
 					Name:       name,
-					ShortName:  shortName,
+					Image:      service.Image,
 					LocalImage: &img,
 				})
 			} else {
 				opts = append(opts, ServiceOption{
 					Name:       name,
-					ShortName:  shortName,
+					Image:      service.Image,
 					LocalImage: nil,
 				})
 			}
@@ -73,7 +77,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		for _, service := range selection {
-			fmt.Printf("Selected: %s\n", service.ShortName)
+			fmt.Printf("Selected: %s\n", service.Name)
 		}
 	},
 }
@@ -85,7 +89,7 @@ func Execute() {
 	}
 }
 
-func listFromComposeFile() DockerCompose {
+func listFromComposeFile() []Service {
 	yamlFile, err := os.ReadFile("/Users/dlvhdr/code/komodor/mono/docker-compose.yml")
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
@@ -98,22 +102,20 @@ func listFromComposeFile() DockerCompose {
 	}
 	// Print the parsed DockerCompose struct
 	// fmt.Printf("Version: %s\n", dockerCompose.Version)
+	res := make([]Service, 0)
 	for serviceName, service := range dockerCompose.Services {
 		if strings.HasPrefix(service.Image, "634375685434.dkr.ecr.us-east-1.amazonaws.com") {
-			// fmt.Printf("Service: %s", serviceName)
-			// fmt.Printf("  Image: %s\n", service.Image)
-		} else {
-			delete(dockerCompose.Services, serviceName)
+			res = append(res, Service{Name: serviceName, Image: service.Image})
 		}
 	}
 
-	return dockerCompose
+	return res
 }
 
 type ServiceOption struct {
 	Name       string
 	LocalImage *image.Summary
-	ShortName  string
+	Image      string
 }
 
 type DockerCompose struct {
@@ -122,8 +124,8 @@ type DockerCompose struct {
 }
 
 type Service struct {
+	Name  string
 	Image string
-	Ports []string
 }
 
 func init() {
