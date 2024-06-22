@@ -1,0 +1,6 @@
+#!/bin/bash
+
+IMAGES=$(docker images | grep 634375685434.dkr.ecr.us-east-1.amazonaws.com | grep latest)
+for IMAGE in $IMAGES; do
+  echo $IMAGE
+done
