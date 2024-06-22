@@ -9,28 +9,22 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-
-	"github.com/dlvhdr/turbo-compose/cmd/internals/utils"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "turbo-compose",
-	Short: "",
-	Long:  ``,
+	Use: "turbo-compose",
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient, err := client.NewClientWithOpts(client.FromEnv)
 		if err != nil {
 			panic(err)
 		}
 		defer apiClient.Close()
-
 		images, err := apiClient.ImageList(context.Background(), image.ListOptions{})
 		if err != nil {
 			panic(err)
@@ -49,22 +43,37 @@ var rootCmd = &cobra.Command{
 			}
 			imgDict[name] = img
 		}
-
 		composeServices := listFromComposeFile()
-
+		opts := make([]ServiceOption, 0)
 		for _, service := range composeServices.Services {
 			if !strings.HasPrefix(service.Image, "634375685434.dkr.ecr.us-east-1.amazonaws.com") {
 				continue
 			}
-
 			name := strings.Split(service.Image, ":")[0]
 			shortName := strings.Split(name, "/")[1]
 			if img, ok := imgDict[name]; ok {
-				fmt.Printf("✅ name: %v, created: %v\n", shortName, utils.TimeElapsed(time.Unix(img.Created, 0)))
+				opts = append(opts, ServiceOption{
+					Name:       name,
+					ShortName:  shortName,
+					LocalImage: &img,
+				})
 			} else {
-				fmt.Printf("❌ name: %v\n", shortName)
+				opts = append(opts, ServiceOption{
+					Name:       name,
+					ShortName:  shortName,
+					LocalImage: nil,
+				})
 			}
+		}
 
+		selection := make([]ServiceOption, 0)
+		form := GetForm(opts, &selection)
+		err = form.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, service := range selection {
+			fmt.Printf("Selected: %s\n", service.ShortName)
 		}
 	},
 }
@@ -101,12 +110,18 @@ func listFromComposeFile() DockerCompose {
 	return dockerCompose
 }
 
-type DockerCompose struct {
-	Version  string
-	Services map[string]Services
+type ServiceOption struct {
+	Name       string
+	LocalImage *image.Summary
+	ShortName  string
 }
 
-type Services struct {
+type DockerCompose struct {
+	Version  string
+	Services map[string]Service
+}
+
+type Service struct {
 	Image string
 	Ports []string
 }
