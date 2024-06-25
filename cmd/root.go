@@ -1,38 +1,24 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
 	"os"
-	"strings"
 
-	"github.com/docker/docker/api/types/image"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+
+	"github.com/dlvhdr/turbo-compose/pkg/ui"
 )
 
-var rootCmd = &cobra.Command{
-	Use: "turbo-compose",
-	Run: func(cmd *cobra.Command, args []string) {
-		images, err := GetLocalImages()
-		if err != nil {
-			panic(err)
-		}
-		services := listServicesFromComposeFile()
+var (
+	repository string
 
-		opts := makeOpts(services, images)
-
-		selection := make([]ServiceOption, 0)
-		form := GetForm(opts, &selection)
-		err = form.Run()
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, service := range selection {
-			fmt.Printf("Selected: %s\n", service.Name)
-		}
-	},
-}
+	rootCmd = &cobra.Command{
+		Use: "turbo-compose",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			m := ui.NewModel(repository)
+			return m.Run()
+		},
+	}
+)
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -41,66 +27,7 @@ func Execute() {
 	}
 }
 
-func listServicesFromComposeFile() []Service {
-	yamlFile, err := os.ReadFile("/Users/dlvhdr/code/komodor/mono/docker-compose.yml")
-	if err != nil {
-		log.Fatalf("Error reading YAML file: %v", err)
-	}
-	var dockerCompose DockerCompose
-	err = yaml.Unmarshal(yamlFile, &dockerCompose)
-	if err != nil {
-		log.Fatalf("Error unmarshaling YAML: %v", err)
-	}
-	res := make([]Service, 0)
-	for serviceName, service := range dockerCompose.Services {
-		if strings.HasPrefix(service.Image, "634375685434.dkr.ecr.us-east-1.amazonaws.com") {
-			res = append(res, Service{Name: serviceName, Image: service.Image})
-		}
-	}
-
-	return res
-}
-
-func makeOpts(services []Service, images map[string]image.Summary) []ServiceOption {
-	opts := make([]ServiceOption, 0)
-	for _, service := range services {
-		if !strings.HasPrefix(service.Image, "634375685434.dkr.ecr.us-east-1.amazonaws.com") {
-			continue
-		}
-		name := service.Name
-		if img, ok := images[name]; ok {
-			opts = append(opts, ServiceOption{
-				Name:       name,
-				Image:      service.Image,
-				LocalImage: &img,
-			})
-		} else {
-			opts = append(opts, ServiceOption{
-				Name:       name,
-				Image:      service.Image,
-				LocalImage: nil,
-			})
-		}
-	}
-	return opts
-}
-
-type ServiceOption struct {
-	Name       string
-	LocalImage *image.Summary
-	Image      string
-}
-
-type DockerCompose struct {
-	Version  string
-	Services map[string]Service
-}
-
-type Service struct {
-	Name  string
-	Image string
-}
-
 func init() {
-	// Here you will define your flags and configuration settings.
+	rootCmd.PersistentFlags().StringVar(&repository, "repository", "", "docker repository prefix")
+
 }
