@@ -57,8 +57,8 @@ func GetLocalImages(repo string) (map[string]image.Summary, error) {
 	return imgDict, nil
 }
 
-func ListServicesFromComposeFile(repo string) []ServiceDefinition {
-	yamlFile, err := os.ReadFile("/Users/dlvhdr/code/komodor/mono/docker-compose.yml")
+func ListServicesFromComposeFile(compose string, repo string) []ServiceDefinition {
+	yamlFile, err := os.ReadFile(compose)
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
 	}

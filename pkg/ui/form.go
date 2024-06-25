@@ -15,11 +15,12 @@ import (
 )
 
 type model struct {
-	repo string
+	repo            string
+	composeFilePath string
 }
 
-func NewModel(repo string) model {
-	return model{repo: repo}
+func NewModel(composeFilePath string, repo string) model {
+	return model{repo: repo, composeFilePath: composeFilePath}
 }
 
 func GetForm(services []docker.ServiceOption, selection *[]docker.ServiceOption) *huh.Form {
@@ -84,7 +85,7 @@ func (m model) Run() error {
 	if err != nil {
 		return err
 	}
-	services := docker.ListServicesFromComposeFile(m.repo)
+	services := docker.ListServicesFromComposeFile(m.composeFilePath, m.repo)
 
 	opts := m.makeOpts(services, images)
 
