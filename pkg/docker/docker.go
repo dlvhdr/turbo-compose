@@ -11,12 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ServiceOption struct {
-	Name       string
-	LocalImage *image.Summary
-	Image      string
-}
-
 type DockerCompose struct {
 	Version  string
 	Services map[string]ServiceDefinition

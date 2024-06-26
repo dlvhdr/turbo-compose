@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
 	"github.com/dlvhdr/turbo-compose/pkg/ui"
@@ -22,7 +23,12 @@ var (
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			m := ui.NewModel(args[0], repository)
-			return m.Run()
+			p := tea.NewProgram(m)
+			if _, err := p.Run(); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			return nil
 		},
 	}
 )
